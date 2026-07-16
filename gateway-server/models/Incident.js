@@ -2,7 +2,12 @@ const mongoose = require('mongoose');
 
 const IncidentSchema = new mongoose.Schema({
     session_uuid: { type: String, required: true, unique: true },
-    citizen_phone_hash: { type: String, required: true }, // Encrypted SHA-256 string for DPDP Compliance
+    citizen_phone_hash: { type: String, required: true },
+    incidentType: { type: String, enum: ['deepfake', 'mule', 'voice', 'currency'], required: true },
+    location: {
+        lat: { type: Number },
+        lng: { type: Number }
+    },
     threat_scores: {
         deepfake_score: { type: Number, default: 0 },
         voice_spoof_score: { type: Number, default: 0 },
