@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from services.model_loader import load_deepfake_model
 from routes.deepfake_routes import router as deepfake_router
 from routes.currency_routes import router as currency_router
+from routes.voice_routes import router as voice_router
 
 
 @asynccontextmanager
@@ -35,3 +36,4 @@ async def health_check():
 
 app.include_router(deepfake_router, prefix="/api/v1/ai/analyze", tags=["deepfake"])
 app.include_router(currency_router, prefix="/api/v1/ai/analyze", tags=["currency"])
+app.include_router(voice_router, prefix="/api/v1/ai/analyze", tags=["voice"])
