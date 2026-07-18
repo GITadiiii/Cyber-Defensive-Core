@@ -1,0 +1,7 @@
+torch
+transformers==4.44.2
+IndicTransToolkit
+sentencepiece
+fastapi
+uvicorn
+pydantic
