@@ -1,3 +1,6 @@
+
+importScripts("config.js");
+
 console.log("GovShield extension loaded successfully!");
 
 let verifiedDomains = [];
@@ -76,7 +79,7 @@ function updateTabStatus(tabId, status, domain, detail) {
   });
 }
 
-chrome.webNavigation.onCompleted.addListener((details) => {
+chrome.webNavigation.onCompleted.addListener(async (details) => {
   if (details.frameId !== 0) return;
 
   const domain = extractDomain(details.url);
@@ -108,6 +111,19 @@ chrome.webNavigation.onCompleted.addListener((details) => {
       type: "GOVSHIELD_WARNING",
       domain: domain,
       reason: `looks very similar to the real site ${typosquat.match}`,
+    });
+    return;
+  }
+
+  // Layer 3: Google Safe Browsing check for domains not caught by earlier layers
+  const isThreat = await checkSafeBrowsing(details.url);
+  if (isThreat) {
+    console.warn("GovShield: SAFE BROWSING THREAT DETECTED —", domain);
+    updateTabStatus(details.tabId, "suspicious", domain, "Flagged by Google Safe Browsing as a known phishing/malware site.");
+    chrome.tabs.sendMessage(details.tabId, {
+      type: "GOVSHIELD_WARNING",
+      domain: domain,
+      reason: "flagged by Google Safe Browsing as a known threat",
     });
     return;
   }
@@ -147,3 +163,28 @@ chrome.webRequest.onBeforeRedirect.addListener(
   },
   { urls: ["<all_urls>"] }
 );
+async function checkSafeBrowsing(url) {
+  try {
+    const response = await fetch(
+      `https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${SAFE_BROWSING_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client: { clientId: "govshield", clientVersion: "1.0" },
+          threatInfo: {
+            threatTypes: ["SOCIAL_ENGINEERING", "MALWARE"],
+            platformTypes: ["ANY_PLATFORM"],
+            threatEntryTypes: ["URL"],
+            threatEntries: [{ url }],
+          },
+        }),
+      }
+    );
+    const data = await response.json();
+    return !!data.matches;
+  } catch (e) {
+    console.error("GovShield: Safe Browsing check failed —", e);
+    return false;
+  }
+}
