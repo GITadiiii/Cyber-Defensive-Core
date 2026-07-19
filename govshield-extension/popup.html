@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      width: 280px;
+      padding: 0;
+      margin: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+    .header {
+      background: linear-gradient(135deg, #1a3c6e, #2c5aa0);
+      color: white;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header h2 {
+      margin: 0;
+      font-size: 17px;
+    }
+    .status {
+      padding: 16px;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .verified { background: #e6f4ea; color: #1e7e34; }
+    .suspicious { background: #fdecea; color: #c0392b; }
+    .neutral { background: #eef1f5; color: #555; }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .verified .dot { background: #1e7e34; }
+    .suspicious .dot { background: #c0392b; }
+    .neutral .dot { background: #888; }
+    p {
+      font-size: 13px;
+      color: #555;
+      line-height: 1.5;
+      margin-top: 12px;
+    }
+    .domain-name {
+      font-weight: 600;
+      color: #222;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span>🛡️</span>
+    <h2>GovShield</h2>
+  </div>
+  <div class="status" id="statusContainer">
+    <div class="status-badge neutral">
+      <span class="dot"></span>
+      Checking...
+    </div>
+    <p>Analyzing this page.</p>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
