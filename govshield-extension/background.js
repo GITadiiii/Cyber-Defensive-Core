@@ -92,9 +92,10 @@ chrome.webNavigation.onCompleted.addListener(async (details) => {
     return;
   }
 
-  if (looksLikeGovSite(domain)) {
+ if (looksLikeGovSite(domain)) {
     console.warn("GovShield: SUSPICIOUS SITE DETECTED —", domain);
     updateTabStatus(details.tabId, "suspicious", domain, "Claims to be a government site but is not verified.");
+    reportSuspiciousUrl(details.url, "not on the verified list");
     chrome.tabs.sendMessage(details.tabId, {
       type: "GOVSHIELD_WARNING",
       domain: domain,
@@ -107,6 +108,7 @@ chrome.webNavigation.onCompleted.addListener(async (details) => {
   if (typosquat) {
     console.warn("GovShield: TYPOSQUAT DETECTED —", domain, "looks like", typosquat.match);
     updateTabStatus(details.tabId, "suspicious", domain, `Looks very similar to ${typosquat.match} — possible impersonation.`);
+    reportSuspiciousUrl(details.url, `looks very similar to the real site ${typosquat.match}`);
     chrome.tabs.sendMessage(details.tabId, {
       type: "GOVSHIELD_WARNING",
       domain: domain,
@@ -120,6 +122,7 @@ chrome.webNavigation.onCompleted.addListener(async (details) => {
   if (isThreat) {
     console.warn("GovShield: SAFE BROWSING THREAT DETECTED —", domain);
     updateTabStatus(details.tabId, "suspicious", domain, "Flagged by Google Safe Browsing as a known phishing/malware site.");
+    reportSuspiciousUrl(details.url, "flagged by Google Safe Browsing as a known threat");
     chrome.tabs.sendMessage(details.tabId, {
       type: "GOVSHIELD_WARNING",
       domain: domain,
@@ -154,6 +157,7 @@ chrome.webRequest.onBeforeRedirect.addListener(
         destDomain,
         `You were redirected from ${sourceDomain} to an unverified site.`
       );
+      reportSuspiciousUrl(details.redirectUrl, `you were redirected here from ${sourceDomain} without warning`);
       chrome.tabs.sendMessage(details.tabId, {
         type: "GOVSHIELD_WARNING",
         domain: destDomain,
@@ -186,5 +190,24 @@ async function checkSafeBrowsing(url) {
   } catch (e) {
     console.error("GovShield: Safe Browsing check failed —", e);
     return false;
+  }
+}
+// --- Report to Payal's gateway backend ---
+const GATEWAY_URL = "http://localhost:5000";
+
+async function reportSuspiciousUrl(url, reason) {
+  try {
+    await fetch(`${GATEWAY_URL}/api/v1/url-check`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url,
+        reason,
+        detectedAt: new Date().toISOString(),
+      }),
+    });
+    console.log("GovShield: Reported to backend —", url);
+  } catch (e) {
+    console.error("GovShield: Failed to report to backend —", e);
   }
 }
