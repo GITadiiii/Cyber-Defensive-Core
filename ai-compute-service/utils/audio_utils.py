@@ -1,47 +1,33 @@
-import numpy as np
 import librosa
+import torch
 
 
-def extract_phase_gap_features(audio_path: str):
+def load_and_resample_audio(audio_path: str, target_sr: int = 16000):
     """
-    Extracts real acoustic features from an audio file, based on the same
-    principle AASIST (https://github.com/clovaai/aasist) uses: spoofed/
-    synthetic voice tends to show unnatural phase discontinuities and
-    unusually flat spectral structure compared to genuine human speech.
-
-    This is NOT a reimplementation of the trained AASIST network (that is a
-    full deep-learning pipeline out of scope for a hackathon timeline).
-    Instead it computes real, direct signal-processing measurements from the
-    actual uploaded audio and combines them into a heuristic spoof score —
-    every number here comes from real analysis of the real file, never mocked.
+    Loads audio and resamples to 16kHz (required input rate for the
+    wav2vec2-based deepfake-audio-classification model).
     """
-    y, sr = librosa.load(audio_path, sr=None, mono=True)
+    y, sr = librosa.load(audio_path, sr=target_sr, mono=True)
 
     if y.size == 0:
         raise ValueError("Audio file contains no readable samples.")
 
-    stft = librosa.stft(y, n_fft=1024, hop_length=256)
-    phase = np.angle(stft)
-    phase_unwrapped = np.unwrap(phase, axis=1)
-    phase_diff = np.diff(phase_unwrapped, axis=1)
-    phase_gap_score = float(np.mean(np.abs(phase_diff)))
-
-    flatness = librosa.feature.spectral_flatness(y=y)
-    spectral_flatness_score = float(np.mean(flatness))
-
-    cqt = np.abs(librosa.cqt(y, sr=sr, hop_length=512))
-    if cqt.shape[0] >= 2:
-        low_band_energy = float(np.mean(cqt[: cqt.shape[0] // 2]))
-        high_band_energy = float(np.mean(cqt[cqt.shape[0] // 2 :]))
-        high_freq_ratio = high_band_energy / (low_band_energy + 1e-8)
-    else:
-        high_freq_ratio = 0.0
-
     duration_seconds = float(librosa.get_duration(y=y, sr=sr))
+    return y, sr, duration_seconds
 
-    return {
-        "phase_gap_score": phase_gap_score,
-        "spectral_flatness_score": spectral_flatness_score,
-        "high_freq_ratio": high_freq_ratio,
-        "duration_seconds": duration_seconds,
-    }
+
+def run_spoof_inference(y, sr, model, feature_extractor):
+    """
+    Runs real inference using the pretrained wav2vec2 deepfake-audio model.
+    Labels from the model: {0: 'real', 1: 'fake'}
+    """
+    inputs = feature_extractor(y, sampling_rate=sr, return_tensors="pt")
+
+    with torch.no_grad():
+        logits = model(**inputs).logits
+        probs = torch.nn.functional.softmax(logits, dim=-1)[0]
+
+    real_prob = float(probs[0])
+    fake_prob = float(probs[1])
+
+    return real_prob, fake_prob

@@ -2,42 +2,35 @@ import os
 import time
 import tempfile
 
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 
-from utils.audio_utils import extract_phase_gap_features
+from utils.audio_utils import load_and_resample_audio, run_spoof_inference
 
 router = APIRouter()
 
 MAX_FILE_SIZE_BYTES = 30 * 1024 * 1024
-ALLOWED_EXTENSIONS = {".wav", ".mp3", ".flac", ".ogg", ".m4a"}
-
-PHASE_GAP_THRESHOLD = 1.35
-FLATNESS_THRESHOLD = 0.015
-HIGH_FREQ_RATIO_THRESHOLD = 0.6
+ALLOWED_EXTENSIONS = {".wav", ".mp3", ".flac", ".ogg", ".m4a", ".mp4"}
 
 
-def _run_voice_analysis(audio_path: str):
-    features = extract_phase_gap_features(audio_path)
+def _run_voice_analysis(audio_path: str, model, feature_extractor):
+    y, sr, duration_seconds = load_and_resample_audio(audio_path)
+    real_prob, fake_prob = run_spoof_inference(y, sr, model, feature_extractor)
 
-    phase_component = min(features["phase_gap_score"] / PHASE_GAP_THRESHOLD, 1.0)
-    flatness_component = min(features["spectral_flatness_score"] / FLATNESS_THRESHOLD, 1.0)
-    high_freq_component = min(features["high_freq_ratio"] / HIGH_FREQ_RATIO_THRESHOLD, 1.0)
+    is_spoofed = fake_prob > real_prob
+    spoof_confidence = round(fake_prob, 4)
 
-    spoof_confidence = round(
-        (0.5 * phase_component) + (0.3 * flatness_component) + (0.2 * high_freq_component),
-        4,
-    )
-    is_spoofed = spoof_confidence > 0.5
-
-    return is_spoofed, spoof_confidence, features
+    return is_spoofed, spoof_confidence, duration_seconds
 
 
 @router.post("/voice")
-async def analyze_voice(file: UploadFile = File(...)):
+async def analyze_voice(request: Request, file: UploadFile = File(...)):
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=415, detail=f"Unsupported audio format: {ext or 'unknown'}")
+
+    voice_model = request.app.state.ml_models["voice_model"]
+    voice_feature_extractor = request.app.state.ml_models["voice_feature_extractor"]
 
     start_time = time.time()
     tmp_path = None
@@ -52,8 +45,8 @@ async def analyze_voice(file: UploadFile = File(...)):
             tmp.write(contents)
             tmp_path = tmp.name
 
-        is_spoofed, spoof_confidence, features = await run_in_threadpool(
-            _run_voice_analysis, tmp_path
+        is_spoofed, spoof_confidence, duration_seconds = await run_in_threadpool(
+            _run_voice_analysis, tmp_path, voice_model, voice_feature_extractor
         )
 
     except HTTPException:
@@ -70,11 +63,6 @@ async def analyze_voice(file: UploadFile = File(...)):
         "isSpoofed": is_spoofed,
         "spoofConfidence": spoof_confidence,
         "confidence": spoof_confidence,
-        "featuresAnalyzed": {
-            "phaseGapScore": round(features["phase_gap_score"], 4),
-            "spectralFlatnessScore": round(features["spectral_flatness_score"], 6),
-            "highFreqRatio": round(features["high_freq_ratio"], 4),
-            "durationSeconds": round(features["duration_seconds"], 2),
-        },
+        "durationSeconds": round(duration_seconds, 2),
         "processingTimeMs": processing_time_ms,
     }
