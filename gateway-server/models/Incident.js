@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const IncidentSchema = new mongoose.Schema({
     session_uuid: { type: String, required: true, unique: true },
     citizen_phone_hash: { type: String, required: true },
-    incidentType: { type: String, enum: ['deepfake', 'mule', 'voice', 'currency'], required: true },
+    incidentType: { type: String, enum: ['deepfake', 'mule', 'voice', 'currency', 'url_phishing'], required: true },
     location: {
         lat: { type: Number },
         lng: { type: Number }
@@ -16,6 +16,9 @@ const IncidentSchema = new mongoose.Schema({
         psti_composite: { type: Number, default: 0 }
     },
     verdict_state: { type: String, enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'], default: 'LOW' },
+    flagged_url: { type: String },
+    detection_reason: { type: String },
+    report_count: { type: Number, default: 1 },
     evidence_report_hash: { type: String },
     timestamp: { type: Date, default: Date.now }
 });
