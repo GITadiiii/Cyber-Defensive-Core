@@ -132,7 +132,7 @@ export default function PstiGauges() {
         <ProgressBar value={dist.avgPsti} color="red" className="mt-3" />
       </Card>
 
-      <Grid numItemsSm={2} numItemsLg={4} className="gap-4">
+      <Grid numItemsSm={2} numItemsLg={4} className="gap-3 sm:gap-4">
         {verdicts.map((v) => (
           <Card key={v} decoration="top" decorationColor={VERDICT_COLOR[v]}>
             <Text>{v}</Text>

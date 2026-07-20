@@ -1,5 +1,9 @@
 // Types mirror Payal's API_CONTRACT.md exactly — do not rename fields.
 // incidentType / location were added on top of her original schema per the 16th-night sync.
+//
+// EXTENDED for the redesign: added result types for each analyzer tool
+// (deepfake, currency, voice, scam-text, mule-trace), matching the exact
+// response shapes returned by Aditi's and Khushboo's services.
 
 export type VerdictState = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 export type IncidentType = "deepfake" | "mule" | "voice" | "currency";
@@ -48,3 +52,61 @@ export interface ThreatBroadcastPayload {
   };
   timestamp: string;
 }
+
+// ---------------------------------------------------------------------------
+// Analyzer tool result types (Aditi's AI Compute Core, port 8000 + 8001)
+// ---------------------------------------------------------------------------
+
+export interface DeepfakeResult {
+  isDeepfake: boolean;
+  confidence: number; // 0-1
+  framesAnalyzed: number;
+  processingTimeMs: number;
+}
+
+export interface CurrencyResult {
+  isAuthentic: boolean;
+  confidenceScore: number; // 0-1
+  flaggedRegions: { x: number; y: number; width: number; height: number }[];
+}
+
+export interface VoiceResult {
+  isSpoofed: boolean;
+  spoofConfidence: number; // 0-1
+  confidence: number;
+  durationSeconds: number;
+  processingTimeMs: number;
+}
+
+export type SupportedLangCode =
+  | "hin_Deva"
+  | "tam_Taml"
+  | "tel_Telu"
+  | "mar_Deva"
+  | "ben_Beng";
+
+export interface ScamTextResult {
+  session_uuid: string;
+  psychological_script_score: number; // 0-100
+  detected_phrases: string[];
+  translated_text: string;
+}
+
+export interface MuleChain {
+  origin_account: string;
+  destination_account: string;
+  chain_accounts: string[];
+  hop_count: number;
+  laundering_hop_count: number;
+  total_amount_inr: number;
+  network_velocity_score: number;
+}
+
+export interface MuleTraceResult {
+  chains: MuleChain[];
+  count: number;
+}
+
+// Generic wrapper every analyzer hook/component uses so loading/error/result
+// states are handled the same way everywhere.
+export type AnalyzerStatus = "idle" | "uploading" | "analyzing" | "success" | "error";

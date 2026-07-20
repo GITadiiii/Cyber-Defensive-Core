@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 
 export default function Home() {
   return (
@@ -13,13 +13,13 @@ export default function Home() {
       </div>
       <div className="flex gap-4">
         <Link
-          href="/citizen"
+          href="/map"
           className="rounded-md bg-gray-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
         >
           Citizen Sandbox
         </Link>
         <Link
-          href="/admin"
+          href="/map"
           className="rounded-md border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100"
         >
           Cyber-Cell Command Panel
