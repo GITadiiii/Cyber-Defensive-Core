@@ -7,6 +7,9 @@ import numpy as np
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.concurrency import run_in_threadpool
 
+from utils.currency_matcher import match_currency
+from utils.currency_ocr import verify_note_text
+
 router = APIRouter()
 
 MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024  # 20MB
@@ -18,9 +21,11 @@ MICROPRINT_VARIANCE_THRESHOLD = 350.0
 
 def _analyze_currency_image(image_path: str):
     """
-    Blocking OpenCV work, executed inside run_in_threadpool.
-    Runs real edge detection + local variance (microprint proxy) analysis
-    on an actual currency note image.
+    Blocking OpenCV + OCR work, executed inside run_in_threadpool.
+    Combines: edge/variance heuristic + ORB denomination matching +
+    regional sharpness + OCR text verification (catches prank/fraud
+    notes like "Children Bank of India" that pass visual checks but
+    fail on printed text).
     """
     img = cv2.imread(image_path)
     if img is None:
@@ -46,13 +51,40 @@ def _analyze_currency_image(image_path: str):
 
     mean_variance = float(np.mean(variances)) if variances else 0.0
 
-    is_authentic = edge_density >= EDGE_DENSITY_THRESHOLD and mean_variance >= MICROPRINT_VARIANCE_THRESHOLD
+    heuristic_authentic = edge_density >= EDGE_DENSITY_THRESHOLD and mean_variance >= MICROPRINT_VARIANCE_THRESHOLD
 
     edge_component = min(edge_density / EDGE_DENSITY_THRESHOLD, 1.0)
     variance_component = min(mean_variance / MICROPRINT_VARIANCE_THRESHOLD, 1.0)
     confidence_score = round((edge_component + variance_component) / 2, 4)
 
-    return is_authentic, confidence_score, flagged_regions[:10]
+    try:
+        matched_denomination, denom_confidence, good_matches, sharpness_ratio = match_currency(image_path)
+    except Exception:
+        matched_denomination, denom_confidence, good_matches, sharpness_ratio = None, 0.0, 0, 0.0
+
+    text_verified, text_issue, ocr_snippet = verify_note_text(image_path)
+
+    # Final decision: heuristic must pass AND OCR must not flag a known
+    # fraud pattern or missing RBI text. text_verified is None only when
+    # OCR itself failed to run — in that case we don't let it block the
+    # result, we just fall back to the heuristic.
+    if text_verified is False:
+        is_authentic = False
+    else:
+        is_authentic = heuristic_authentic
+
+    return (
+        is_authentic,
+        confidence_score,
+        flagged_regions[:10],
+        matched_denomination,
+        denom_confidence,
+        good_matches,
+        sharpness_ratio,
+        text_verified,
+        text_issue,
+        ocr_snippet,
+    )
 
 
 @router.post("/currency")
@@ -73,9 +105,18 @@ async def analyze_currency(file: UploadFile = File(...)):
             tmp.write(contents)
             tmp_path = tmp.name
 
-        is_authentic, confidence_score, flagged_regions = await run_in_threadpool(
-            _analyze_currency_image, tmp_path
-        )
+        (
+            is_authentic,
+            confidence_score,
+            flagged_regions,
+            matched_denomination,
+            denom_confidence,
+            good_matches,
+            sharpness_ratio,
+            text_verified,
+            text_issue,
+            ocr_snippet,
+        ) = await run_in_threadpool(_analyze_currency_image, tmp_path)
 
     except HTTPException:
         raise
@@ -89,4 +130,11 @@ async def analyze_currency(file: UploadFile = File(...)):
         "isAuthentic": is_authentic,
         "confidenceScore": confidence_score,
         "flaggedRegions": flagged_regions,
+        "matchedDenomination": matched_denomination,
+        "denominationMatchConfidence": denom_confidence,
+        "denominationGoodMatches": good_matches,
+        "regionalSharpnessRatio": sharpness_ratio,
+        "textVerified": text_verified,
+        "textIssue": text_issue,
+        "ocrSnippet": ocr_snippet,
     }
