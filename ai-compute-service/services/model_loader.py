@@ -21,3 +21,12 @@ def load_deepfake_model():
     )
 
     return quantized_model, processor
+
+def load_voice_spoof_model():
+    from transformers import AutoFeatureExtractor, AutoModelForAudioClassification
+
+    model_name = "garystafford/wav2vec2-deepfake-voice-detector"
+    feature_extractor = AutoFeatureExtractor.from_pretrained(model_name)
+    model = AutoModelForAudioClassification.from_pretrained(model_name)
+    model.eval()
+    return model, feature_extractor

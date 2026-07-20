@@ -122,5 +122,54 @@ const getAllIncidents = async (req, res) => {
         return res.status(500).json({ error: "Internal Server Error", details: error.message });
     }
 };
+// POST /api/v1/url-check
+const createUrlCheck = async (req, res) => {
+    try {
+        const { url, reason, detectedAt } = req.body;
 
-module.exports = { createIncident, getIncidentById, getAllIncidents };
+        if (!url || !reason) {
+            return res.status(400).json({ error: "Missing required fields: url, reason" });
+        }
+
+        let incident = await Incident.findOne({ flagged_url: url, incidentType: 'url_phishing' });
+
+        if (incident) {
+            incident.report_count += 1;
+            await incident.save();
+        } else {
+            incident = new Incident({
+                session_uuid: `url-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                citizen_phone_hash: "browser-extension",
+                incidentType: 'url_phishing',
+                flagged_url: url,
+                detection_reason: reason,
+                threat_scores: { psti_composite: 50 },
+                verdict_state: 'MEDIUM',
+                timestamp: detectedAt || Date.now()
+            });
+            await incident.save();
+        }
+
+        if (incident.report_count >= 3) {
+            incident.verdict_state = 'CRITICAL';
+            incident.threat_scores.psti_composite = 85;
+            await incident.save();
+
+            const io = req.app.get('io');
+            io.emit('threat-broadcast', {
+                session_uuid: incident.session_uuid,
+                incidentType: 'url_phishing',
+                psti_composite: incident.threat_scores.psti_composite,
+                verdict_state: incident.verdict_state,
+                location: null,
+                timestamp: incident.timestamp
+            });
+        }
+
+        return res.status(201).json(incident);
+    } catch (error) {
+        return res.status(500).json({ error: "Internal Server Error", details: error.message });
+    }
+};
+
+module.exports = { createIncident, getIncidentById, getAllIncidents, createUrlCheck };

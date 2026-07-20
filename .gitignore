@@ -1,0 +1,10 @@
+indic_service/venv/
+__pycache__/
+*.pyc
+
+.env
+graph-analytics/.env
+graph-analytics/venv/
+graph-analytics/data/
+
+config.js

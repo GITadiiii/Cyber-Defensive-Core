@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "GovShield — Fake Gov Site Detector",
+  "version": "1.0",
+  "description": "Warns you when a government-looking website is not genuine.",
+  "permissions": ["declarativeNetRequest", "declarativeNetRequestFeedback", "webNavigation", "webRequest", "storage", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["allowlist.json"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
