@@ -14,12 +14,15 @@ MAX_FILE_SIZE_BYTES = 300 * 1024 * 1024  # ~300MB
 ALLOWED_EXTENSIONS = {".mp4", ".mov", ".avi", ".webm", ".mkv"}
 
 
+LOW_RES_THRESHOLD_PX = 150  # face-crop smaller-dimension threshold, in pixels
+
+
 def _run_inference(video_path: str, model, processor):
     """
     Blocking work: frame extraction (OpenCV) + PyTorch inference.
     Executed inside run_in_threadpool so it never blocks the async event loop.
     """
-    frames = extract_every_nth_frame(video_path, n=10)
+    frames, avg_min_dimension = extract_every_nth_frame(video_path, n=10)
 
     inputs = processor(images=frames, return_tensors="pt")
 
@@ -37,7 +40,9 @@ def _run_inference(video_path: str, model, processor):
     aggregated_confidence = float(fake_scores.mean().item())
     is_deepfake = aggregated_confidence > 0.5
 
-    return is_deepfake, aggregated_confidence, len(frames)
+    low_res_warning = avg_min_dimension < LOW_RES_THRESHOLD_PX
+
+    return is_deepfake, aggregated_confidence, len(frames), low_res_warning
 
 
 @router.post("/deepfake")
@@ -67,7 +72,7 @@ async def analyze_deepfake(request: Request, file: UploadFile = File(...)):
             tmp.write(contents)
             tmp_path = tmp.name
 
-        is_deepfake, confidence, frames_analyzed = await run_in_threadpool(
+        is_deepfake, confidence, frames_analyzed, low_res_warning = await run_in_threadpool(
             _run_inference, tmp_path, model, processor
         )
 
@@ -81,9 +86,19 @@ async def analyze_deepfake(request: Request, file: UploadFile = File(...)):
 
     processing_time_ms = int((time.time() - start_time) * 1000)
 
-    return {
+    response = {
         "isDeepfake": is_deepfake,
         "confidence": round(confidence, 4),
         "framesAnalyzed": frames_analyzed,
         "processingTimeMs": processing_time_ms,
+        "lowResolutionWarning": low_res_warning,
     }
+
+    if low_res_warning:
+        response["lowResolutionNote"] = (
+            "Face regions in this video are very small/compressed — detection "
+            "confidence may be reduced. Common with forwarded/re-compressed "
+            "videos (e.g. WhatsApp)."
+        )
+
+    return response

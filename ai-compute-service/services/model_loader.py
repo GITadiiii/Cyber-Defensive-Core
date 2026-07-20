@@ -1,15 +1,29 @@
 import torch
 from transformers import AutoImageProcessor, AutoModelForImageClassification
 
-MODEL_NAME = "dima806/deepfake_vs_real_image_detection"
+MODEL_NAME = "sakshamkr1/deitfake-v2"
 
 
 def load_deepfake_model():
     """
-    Loads the real EfficientNet-B0-based deepfake detector from HuggingFace.
+    Loads a DeiT-based (Vision Transformer family) deepfake detector from
+    HuggingFace, fine-tuned on the Deepfake and Real Images dataset
+    (derived from OpenForensics), published 2025-2026 — chosen specifically
+    because the earlier dima806/deepfake_vs_real_image_detection model
+    (trained ~3 years ago per its own model card) suffered from concept
+    drift against modern, more realistic AI-generated video and failed to
+    flag a real test video we tried. This model is more recently trained
+    and should better reflect current-generation deepfake generation
+    techniques.
+
     Called once at FastAPI startup (see main.py lifespan), not per-request.
     Applies dynamic INT8 quantization on the linear layers to keep it inside
     a small free-tier memory envelope.
+
+    Note: we deliberately do NOT hardcode which numeric class index means
+    "fake" here — routes/deepfake_routes.py reads model.config.id2label at
+    inference time and matches on the string "fake", so this works
+    correctly regardless of this model's exact label ordering.
     """
     processor = AutoImageProcessor.from_pretrained(MODEL_NAME)
     model = AutoModelForImageClassification.from_pretrained(MODEL_NAME)
