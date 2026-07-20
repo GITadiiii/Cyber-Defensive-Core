@@ -81,7 +81,14 @@ export default function IncidentMap() {
         attribution='&copy; OpenStreetMap contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      {incidents?.map((incident) => (
+      {incidents
+        ?.filter(
+          (incident) =>
+            incident.location &&
+            typeof incident.location.lat === "number" &&
+            typeof incident.location.lng === "number"
+        )
+        .map((incident) => (
         <CircleMarker
           key={incident._id}
           center={[incident.location.lat, incident.location.lng]}
