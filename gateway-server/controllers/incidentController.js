@@ -172,4 +172,23 @@ const createUrlCheck = async (req, res) => {
     }
 };
 
-module.exports = { createIncident, getIncidentById, getAllIncidents, createUrlCheck };
+// PATCH /api/v1/incident/:id
+const updateIncidentCase = async (req, res) => {
+    try {
+        const { case_status, assigned_officer } = req.body;
+        const updates = {};
+        if (case_status !== undefined) updates.case_status = case_status;
+        if (assigned_officer !== undefined) updates.assigned_officer = assigned_officer;
+
+        const incident = await Incident.findByIdAndUpdate(
+            req.params.id, { $set: updates }, { new: true }
+        );
+
+        if (!incident) return res.status(404).json({ error: "Incident not found" });
+        return res.status(200).json(incident);
+    } catch (error) {
+        return res.status(500).json({ error: "Internal Server Error", details: error.message });
+    }
+};
+
+module.exports = { createIncident, getIncidentById, getAllIncidents, createUrlCheck, updateIncidentCase };
