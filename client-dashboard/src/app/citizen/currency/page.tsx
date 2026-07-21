@@ -4,7 +4,7 @@ import FileAnalyzer from "@/components/shared/FileAnalyzer";
 import ConfidenceBar from "@/components/shared/ConfidenceBar";
 import { analyzeCurrency } from "@/lib/api";
 import type { CurrencyResult } from "@/lib/types";
-import { ShieldAlert, ShieldCheck } from "lucide-react";
+import { ShieldAlert, ShieldCheck, Info } from "lucide-react";
 
 export default function CurrencyPage() {
   return (
@@ -17,6 +17,14 @@ export default function CurrencyPage() {
       </header>
 
       <div className="max-w-xl">
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-white/10 bg-white/2 px-4 py-3 text-sm text-slate-400">
+          <Info size={16} className="mt-0.5 shrink-0 text-[#4d8fdb]" />
+          <p>
+            Please upload a photo of the <span className="text-slate-200">front side</span> of
+            the currency note only. Back-side or partial images may reduce detection accuracy.
+          </p>
+        </div>
+
         <FileAnalyzer<CurrencyResult>
           accept=".jpg,.jpeg,.png,.bmp,.webp"
           maxSizeMB={20}

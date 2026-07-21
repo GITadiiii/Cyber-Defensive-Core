@@ -29,6 +29,10 @@ export interface Incident {
   };
   evidence_report_hash?: string;
   timestamp: string;
+  // Case management fields — NOT YET in Payal's MongoDB schema.
+  // Add to Incident.js: case_status (default "OPEN"), assigned_officer (default null).
+  case_status?: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "ESCALATED";
+  assigned_officer?: string | null;
 }
 
 export interface IncidentsResponse {

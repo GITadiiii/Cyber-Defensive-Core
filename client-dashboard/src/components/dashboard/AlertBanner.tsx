@@ -6,6 +6,7 @@ export default function AlertBanner({
   criticalCount: number;
 }) {
   if (criticalCount === 0) return null;
+
   return (
     <div className="mb-6 flex items-center gap-3 rounded-lg border border-red-500/30 bg-red-950/40 px-5 py-3">
       <AlertOctagon size={18} className="shrink-0 text-red-400" />

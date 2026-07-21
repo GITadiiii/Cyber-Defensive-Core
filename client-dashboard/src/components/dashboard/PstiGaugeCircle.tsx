@@ -8,6 +8,7 @@
 export default function PstiGaugeCircle({ value }: { value: number }) {
   const pct = Math.min(Math.max(value, 0), 100);
   const tier = tierLabel(pct);
+
   return (
     <div className="flex items-center gap-5 rounded-lg border border-white/10 bg-white/2 px-5 py-4">
       <div

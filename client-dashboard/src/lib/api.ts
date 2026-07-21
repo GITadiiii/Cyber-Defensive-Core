@@ -218,4 +218,21 @@ export async function checkServiceHealth(url: string): Promise<boolean> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Case management — requires a new backend route from Payal:
+//   PATCH /api/v1/incident/:id  { case_status?, assigned_officer? }
+// Not implemented on the gateway yet; this call will 404 until added.
+// ---------------------------------------------------------------------------
+
+export async function updateIncidentCase(
+  id: string,
+  updates: { case_status?: Incident["case_status"]; assigned_officer?: string | null }
+): Promise<Incident> {
+  return request<Incident>(`${GATEWAY_URL}/api/v1/incident/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updates),
+  });
+}
+
 export { GATEWAY_URL as API_BASE_URL };
