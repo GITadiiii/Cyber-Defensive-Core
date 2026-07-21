@@ -12,7 +12,9 @@ import {
   Menu,
   X,
   ShieldCheck,
+  LogOut,
 } from "lucide-react";
+import { GATEWAY_URL } from "@/lib/config";
 
 const NAV_ITEMS = [
   { href: "/map", label: "Incident Map", icon: Map },
@@ -21,6 +23,17 @@ const NAV_ITEMS = [
   { href: "/cases", label: "Case Management", icon: FolderKanban },
   { href: "/analytics", label: "Analytics & Trends", icon: BarChart3 },
 ];
+
+async function handleLogout() {
+  try {
+    await fetch(`${GATEWAY_URL}/api/v1/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } finally {
+    window.location.href = "/login";
+  }
+}
 
 function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   return (
@@ -47,6 +60,18 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
   );
 }
 
+function LogoutButton() {
+  return (
+    <button
+      onClick={handleLogout}
+      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-colors w-full"
+    >
+      <LogOut size={18} strokeWidth={2} />
+      Logout
+    </button>
+  );
+}
+
 export default function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -66,6 +91,9 @@ export default function Sidebar() {
         </div>
         <div className="flex-1 overflow-y-auto py-4">
           <NavLinks pathname={pathname} />
+        </div>
+        <div className="px-3 py-4 border-t border-white/10">
+          <LogoutButton />
         </div>
       </aside>
 
@@ -108,6 +136,9 @@ export default function Sidebar() {
             </div>
             <div className="flex-1 overflow-y-auto py-4">
               <NavLinks pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+            </div>
+            <div className="px-3 py-4 border-t border-white/10">
+              <LogoutButton />
             </div>
           </div>
         </div>

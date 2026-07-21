@@ -38,6 +38,7 @@ async function request<T>(
       ...options,
       signal: controller.signal,
       cache: "no-store",
+      credentials: "include",
     });
 
     if (!res.ok) {
