@@ -4,12 +4,13 @@ const {
     createIncident,
     getIncidentById,
     getAllIncidents,
-    createUrlCheck
+    createUrlCheck,
+    updateIncidentCase
 } = require('../controllers/incidentController');
-
+const verifyOfficer = require('../middleware/verifyOfficer');
 router.post('/incident', createIncident);
 router.post('/url-check', createUrlCheck);
-router.get('/incident/:id', getIncidentById);
-router.get('/incidents', getAllIncidents);
-
+router.get('/incident/:id', verifyOfficer, getIncidentById);
+router.get('/incidents', verifyOfficer, getAllIncidents);
+router.patch('/incident/:id', verifyOfficer, updateIncidentCase);
 module.exports = router;

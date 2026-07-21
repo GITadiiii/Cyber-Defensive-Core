@@ -20,6 +20,8 @@ const IncidentSchema = new mongoose.Schema({
     detection_reason: { type: String },
     report_count: { type: Number, default: 1 },
     evidence_report_hash: { type: String },
+    case_status: { type: String, enum: ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'ESCALATED'], default: 'OPEN' },
+    assigned_officer: { type: String, default: null },
     timestamp: { type: Date, default: Date.now }
 });
 
