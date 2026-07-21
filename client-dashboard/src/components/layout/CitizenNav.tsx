@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 
 const NAV_ITEMS = [
-  { href: "/citizen", label: "Report / Check" },
   { href: "/citizen/deepfake", label: "Deepfake Check" },
   { href: "/citizen/voice", label: "Voice Check" },
   { href: "/citizen/currency", label: "Currency Check" },
