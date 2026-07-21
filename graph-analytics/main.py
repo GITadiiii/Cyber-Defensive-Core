@@ -1,8 +1,10 @@
+import datetime
 import os
 from contextlib import asynccontextmanager
 
+import jwt
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import Cookie, Depends, FastAPI, HTTPException
 from neo4j import GraphDatabase
 from pydantic import BaseModel
 
@@ -13,6 +15,7 @@ load_dotenv()
 URI = os.getenv("NEO4J_URI")
 USERNAME = os.getenv("NEO4J_USERNAME")
 PASSWORD = os.getenv("NEO4J_PASSWORD")
+JWT_SECRET = os.getenv("JWT_SECRET")
 
 driver = None
 
@@ -28,6 +31,42 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Mule Chain Detection Service", lifespan=lifespan)
 
 
+# ---------------------------------------------------------------------------
+# Auth: Payal's gateway issues JWTs as an httpOnly cookie named "token"
+# (set via res.cookie('token', jwt, {...}) at login). The frontend's
+# central request() helper sends credentials: 'include' on every call, so
+# the browser forwards that cookie automatically -- no Authorization header
+# involved. This verifies that same cookie here.
+# ---------------------------------------------------------------------------
+
+def verify_officer(token: str = Cookie(None)):
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        return payload  # contains officerId, email
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Session expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+
+# ---------------------------------------------------------------------------
+# Audit logging: every mule-trace search is logged (officer, what they
+# searched, when, how many results). Minimum viable version prints to
+# console/log file; can be upgraded to write to Neo4j/Mongo later.
+# ---------------------------------------------------------------------------
+
+def log_mule_search(officer_email: str, account_number: str | None, result_count: int):
+    log_entry = {
+        "officer": officer_email,
+        "account_searched": account_number or "(bulk scan - no specific account)",
+        "timestamp": datetime.datetime.utcnow().isoformat(),
+        "results_found": result_count,
+    }
+    print(f"[AUDIT] {log_entry}")
+
+
 class TraceMuleRequest(BaseModel):
     account_number: str | None = None
     max_accounts_to_check: int = 20
@@ -35,7 +74,7 @@ class TraceMuleRequest(BaseModel):
 
 
 @app.post("/api/v1/graph/trace-mule")
-async def trace_mule(payload: TraceMuleRequest):
+async def trace_mule(payload: TraceMuleRequest, officer: dict = Depends(verify_officer)):
     try:
         with driver.session() as session:
             if payload.account_number:
@@ -51,8 +90,12 @@ async def trace_mule(payload: TraceMuleRequest):
                         break
                 chains = chains[:payload.max_results]
 
+        log_mule_search(officer["email"], payload.account_number, len(chains))
+
         return {"chains": chains, "count": len(chains)}
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -67,7 +110,7 @@ class GraphAnalyzeRequest(BaseModel):
 
 
 @app.post("/api/v1/graph/analyze")
-async def graph_analyze(payload: GraphAnalyzeRequest):
+async def graph_analyze(payload: GraphAnalyzeRequest, officer: dict = Depends(verify_officer)):
     """
     Compatibility endpoint for gateway-server (Payal's incidentController.js),
     which expects a response shaped like { "lviScore": <number> }.
@@ -90,6 +133,8 @@ async def graph_analyze(payload: GraphAnalyzeRequest):
         top_score = max(chain["network_velocity_score"] for chain in chains)
         return {"lviScore": top_score}
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
