@@ -14,6 +14,7 @@ export default function IncidentLookupTable({ incidents }: { incidents: Incident
         <span className="h-2 w-2 rounded-full bg-[#4d8fdb]" />
         <p className="text-sm font-medium text-white">Incident Lookup Table</p>
       </div>
+
       <div className="max-h-80 overflow-y-auto">
         {incidents.length === 0 ? (
           <p className="px-4 py-6 text-center text-sm text-slate-500">No incidents yet.</p>

@@ -5,13 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Map,
-  Video,
-  Mic,
-  Banknote,
-  MessageSquareWarning,
   Share2,
-  ShieldAlert,
   ClipboardList,
+  FolderKanban,
+  BarChart3,
   Menu,
   X,
   ShieldCheck,
@@ -19,13 +16,10 @@ import {
 
 const NAV_ITEMS = [
   { href: "/map", label: "Incident Map", icon: Map },
-  { href: "/deepfake", label: "Deepfake Check", icon: Video },
-  { href: "/voice", label: "Voice Spoof Check", icon: Mic },
-  { href: "/currency", label: "Currency Check", icon: Banknote },
-  { href: "/scam-text", label: "Scam Text Check", icon: MessageSquareWarning },
   { href: "/mule-trace", label: "Mule Chain Trace", icon: Share2 },
-  { href: "/website-checker", label: "Website Checker", icon: ShieldAlert },
-  { href: "/reports", label: "Reports", icon: ClipboardList },
+  { href: "/reports", label: "Reports / History", icon: ClipboardList },
+  { href: "/cases", label: "Case Management", icon: FolderKanban },
+  { href: "/analytics", label: "Analytics & Trends", icon: BarChart3 },
 ];
 
 function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
