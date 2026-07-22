@@ -3,6 +3,7 @@ import os
 from contextlib import asynccontextmanager
 
 import jwt
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from fastapi import Cookie, Depends, FastAPI, HTTPException
 from neo4j import GraphDatabase
@@ -29,6 +30,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Mule Chain Detection Service", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,  # needed since we're using cookies for auth
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ---------------------------------------------------------------------------

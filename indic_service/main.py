@@ -9,7 +9,7 @@ Run with:
 Matches the API contract Payal's gateway (Express.js) expects:
     { "psychological_script_score": <0-100>, "detected_phrases": [...] }
 """
-
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
@@ -25,6 +25,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Vernacular Threat Analysis Service", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class TextAnalysisRequest(BaseModel):
