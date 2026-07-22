@@ -54,7 +54,7 @@ export default function DashboardOverview() {
 
   if (status === "loading") {
     return (
-      <div className="rounded-lg border border-white/10 bg-white/[0.02] px-5 py-4 text-sm text-slate-500">
+      <div className="rounded-lg border border-white/10 bg-white/2 px-5 py-4 text-sm text-slate-500">
         Loading dashboard overview…
       </div>
     );
