@@ -38,7 +38,7 @@ async function request<T>(
       ...options,
       signal: controller.signal,
       cache: "no-store",
-      credentials: "include",
+      credentials: url.startsWith(GATEWAY_URL) ? "include" : "omit",
     });
 
     if (!res.ok) {
