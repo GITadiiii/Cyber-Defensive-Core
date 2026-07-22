@@ -2,11 +2,10 @@ import os
 import time
 import tempfile
 
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 
 from utils.audio_utils import load_and_resample_audio, run_spoof_inference
-from services.model_loader import get_voice_model
 
 router = APIRouter()
 
@@ -25,13 +24,13 @@ def _run_voice_analysis(audio_path: str, model, feature_extractor):
 
 
 @router.post("/voice")
-async def analyze_voice(file: UploadFile = File(...)):
+async def analyze_voice(request: Request, file: UploadFile = File(...)):
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=415, detail=f"Unsupported audio format: {ext or 'unknown'}")
 
-    # Lazy-loads on first call, cached after that (see model_loader.py)
-    voice_model, voice_feature_extractor = get_voice_model()
+    voice_model = request.app.state.ml_models["voice_model"]
+    voice_feature_extractor = request.app.state.ml_models["voice_feature_extractor"]
 
     start_time = time.time()
     tmp_path = None
