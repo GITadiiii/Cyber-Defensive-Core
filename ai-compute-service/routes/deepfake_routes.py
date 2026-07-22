@@ -3,10 +3,11 @@ import time
 import tempfile
 
 import torch
-from fastapi import APIRouter, UploadFile, File, Request, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.concurrency import run_in_threadpool
 
 from utils.video_utils import extract_every_nth_frame
+from services.model_loader import get_deepfake_model
 
 router = APIRouter()
 
@@ -46,17 +47,13 @@ def _run_inference(video_path: str, model, processor):
 
 
 @router.post("/deepfake")
-async def analyze_deepfake(request: Request, file: UploadFile = File(...)):
+async def analyze_deepfake(file: UploadFile = File(...)):
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=415, detail=f"Unsupported video format: {ext or 'unknown'}")
 
-    ml_models = getattr(request.app.state, "ml_models", None)
-    if not ml_models or "deepfake_model" not in ml_models:
-        raise HTTPException(status_code=503, detail="Deepfake model is not loaded yet.")
-
-    model = ml_models["deepfake_model"]
-    processor = ml_models["deepfake_processor"]
+    # Lazy-loads on first call, cached after that (see model_loader.py)
+    model, processor = get_deepfake_model()
 
     start_time = time.time()
 

@@ -2,7 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from services.model_loader import load_deepfake_model, load_voice_spoof_model
 from routes.deepfake_routes import router as deepfake_router
 from routes.currency_routes import router as currency_router
 from routes.voice_routes import router as voice_router
@@ -10,21 +9,13 @@ from routes.voice_routes import router as voice_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("[startup] Loading EfficientNet-B0 deepfake model...")
-    model, processor = load_deepfake_model()
-
-    print("[startup] Loading wav2vec2 voice spoof detection model...")
-    voice_model, voice_feature_extractor = load_voice_spoof_model()
-
-    app.state.ml_models = {
-        "deepfake_model": model,
-        "deepfake_processor": processor,
-        "voice_model": voice_model,
-        "voice_feature_extractor": voice_feature_extractor,
-    }
-    print("[startup] Models loaded. AI Compute Core ready.")
+    # Models are no longer eagerly loaded here. They lazy-load on first
+    # actual use via services/model_loader.py's get_deepfake_model() /
+    # get_voice_model() — this keeps peak memory low (important for
+    # low-RAM hosting tiers like a 1GB EC2 instance), since the deepfake
+    # and voice models are no longer both held in memory at all times.
+    print("[startup] AI Compute Core ready. Models will lazy-load on first use.")
     yield
-    app.state.ml_models.clear()
 
 
 app = FastAPI(title="DeepTrust AI Compute Core", lifespan=lifespan)
